@@ -18,12 +18,12 @@ void writeToFile(const cmplx* const v, const string s, const double dx,
 //-----------------------------------
 int main(){
 
-	const int Nx = 300;
+	const int Nx = 1000;
 	const double xmin = -40;
 	const double xmax = 40;
 	const double Tend = 10*M_PI;
 	const double dx = ( xmax-xmin ) / ( Nx - 1 );
-	const double dt = Tend / 1000;
+	const double dt = Tend / 2000;
 	double t = 0;
 	const int Na = 10;
 	int Nk = int(Tend / Na / dt + 0.5);
@@ -69,25 +69,27 @@ void step(const cmplx* const psi0, cmplx* const psi1, const double dx, const dou
 {
     cmplx a = cmplx( 0, -dt / (4 * dx * dx ) );
     cmplx* d = new cmplx[N];
-    cmplx acc_up = cmplx( 0, dt / (4 * dx * dx ) );
-    cmplx* acc_d = new cmplx[N];
-    cmplx* dcc = new cmplx[N];    
+    cmplx* dcc = new cmplx[N];
+    cmplx* psi_temp = new cmplx[N];
     
     for(int j = 0; j<N; j++) d[j] = cmplx( 1, dt / ( 2 * dx * dx ) + dt / 2 * ( 0.5 * k * (xmin + j*dx)*(xmin + j*dx) ) );
     for(int j = 0; j<N; j++) dcc[j] = cmplx( 1, - dt / ( 2 * dx * dx ) - dt / 2 * ( 0.5 * k * (xmin + j*dx)*(xmin + j*dx) ) );
-    for(int j = 0; j<N; j++) acc_d[j] = cmplx( 0, dt / (4 * dx * dx ) );
+    
+    psi_temp[0] = dcc[0]*psi0[0] + (-a)*psi0[1];
+    for (int j=1; j<N-1; j++) psi_temp[j] = (-a)*psi0[j-1] + dcc[j]*psi0[j] + (-a)*psi0[j+1];
+    psi_temp[N-1] = (-a)*psi0[N-2] + dcc[N-1]*psi0[N-1];
     
     for(int j = 1; j<N; j++) {
       d[j] -= 		a/d[j-1] * a;
-      dcc[j] -= 	a/d[j-1] * acc_up;
-      acc_d[j] -= 	a/d[j-1] * dcc[j-1];
+      psi_temp[j] -= 	a/d[j-1] * psi_temp[j-1];
     }
     
-    psi1[N-1] = ( dcc[N-1] / d[N-1] ) * psi0[N-1];
-    for(int j = N-2; j>=0; j--) psi1[j] = ( dcc[j]*psi0[j] + acc*psi0[j+1] - a*psi1[j+1] ) / d[j];
+    psi1[N-1] = psi_temp[N-1] / d[N-1];
+    for(int j = N-2; j>=0; j--) psi1[j] = ( psi_temp[j] - a*psi1[j+1] ) / d[j];
     
     delete[] d;
     delete[] dcc;
+    delete[] psi_temp;
 }
 //-----------------------------------
 void writeToFile(const cmplx* const v, const string s, const double dx,
